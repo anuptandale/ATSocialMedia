@@ -46,7 +46,7 @@ export const paymentVerification = async (req, res) => {
       });
   
       res.redirect(
-        `http://localhost:3000/`
+        `http://localhost:5000/`
       );
     } else {
       res.status(400).json({
