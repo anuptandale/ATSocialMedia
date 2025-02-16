@@ -2,6 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Notification from "../models/notification.model.js";
+import sendMail from "../lib/utils/sendMail.js";
 export const createPost = async (req, res) => {
     try {
         const { text } = req.body;
@@ -24,6 +25,7 @@ export const createPost = async (req, res) => {
             img
         })
         await newPost.save();
+        sendMail(user.email,"you have successfully created post");
         res.status(201).json(newPost);
     } catch (error) {
         res.status(500).json({ error: "Internal server error" });
@@ -45,6 +47,7 @@ export const deletePost = async (req, res) => {
             await cloudinary.uploader.destroy(imgId);
         }
         await Post.findByIdAndDelete(req.params.id);
+        // sendMail(userData.email,"you have successfully deleted post");
         res.status(200).json({ message: "Post deleted successfully" });
     } catch (error) {
         console.log("Error in deletePost controller: ", error);
@@ -57,7 +60,7 @@ export const commentOnPost = async (req, res) => {
         const { text } = req.body;
         const postId = req.params.id;
         const userId = req.user._id;
-
+        const userData = await User.findOne({_id:userId});
         if (!text) {
             return res.status(400).json({ error: "Text field is required" })
         }
@@ -69,6 +72,7 @@ export const commentOnPost = async (req, res) => {
         const comment = { user: userId, text };
         post.comments.push(comment);
         await post.save();
+        sendMail(userData.email,"you have successfully commented on post");
         res.status(200).json(post);
     } catch (error) {
         console.log("Error in commentOnPost: ", error);
@@ -84,7 +88,8 @@ export const likeUnlikePost = async (req, res) => {
         const post = await Post.findById(postId);
         console.log("id",userId);
         console.log("postid", postId);
-        
+        const userData = await User.findOne({_id:userId});
+        console.log(userData)
         if (!post) {
             return res.status(404).json({ error: "Post not found" });
         }
@@ -95,13 +100,12 @@ export const likeUnlikePost = async (req, res) => {
             await User.updateOne({ _id: userId }, { $pull: { likedPosts: postId } });
 
             const updatedLikes = post.likes.filter((id)=>id.toString()!== userId.toString());
-
+            sendMail(userData.email,"you have successfully liked post");
             res.status(200).json(updatedLikes);
         } else {
             post.likes.push(userId);
             await User.updateOne({ _id: userId }, { $push: { likedPosts: postId } });
             await post.save();
-
             const notification = new Notification({
                 from: userId,
                 to: post.user,
